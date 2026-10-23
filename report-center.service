@@ -1,0 +1,14 @@
+[Unit]
+Description=Report Center
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/projects/report-center
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/projects/report-center/.venv/bin/python %h/projects/report-center/report.py --host 127.0.0.1 --port 8765
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

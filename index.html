@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: WTFNMFPL -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>收入对账明细表 - 报表中心</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%232f4f6f'/%3E%3Cpath d='M3 4h10M3 8h10M3 12h10M6.5 3v10M10 3v10' stroke='%23c9d6e4' stroke-width='1'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#eceff3; --panel:#fff; --line:#c8d2dd; --line2:#e4e9ef;
+  --ink:#1b2229; --ink2:#55616e; --ink3:#8b96a2;
+  --hdr1:#f8fafc; --hdr2:#e6edf4;
+  --accent:#1f4e79; --accent2:#2a6ba8;
+  --sel:#d9e8f7; --hover:#f1f6fb;
+  --ok:#1a7f37; --warn:#8a6100; --mut:#606b78;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font:12px/1.5 "Segoe UI","Microsoft YaHei",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink); background:var(--bg);
+  display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+button,select,input{font-family:inherit;font-size:12px;color:var(--ink)}
+svg{display:block}
+
+/* ── 顶栏 ───────────────────────────────────────────── */
+.titlebar{
+  height:32px; flex:0 0 32px; display:flex; align-items:center; gap:0;
+  padding:0 8px; background:linear-gradient(#fbfcfd,var(--hdr2));
+  border-bottom:1px solid #b6c2cf; box-shadow:inset 0 1px 0 #fff;
+  user-select:none;
+}
+.brand{display:flex;align-items:center;gap:6px;padding-right:10px}
+.brand b{font-size:13px;letter-spacing:.2px;color:#12314f;font-weight:600}
+.crumb{color:var(--ink2);padding-left:10px;border-left:1px solid #c3cedb}
+.crumb i{font-style:normal;color:var(--ink3);padding:0 6px}
+.crumb .cur{color:var(--ink)}
+.spacer{flex:1}
+.env{display:flex;align-items:center;gap:5px;color:var(--ink2);
+  border:1px solid #ccd6e1;background:#fff;border-radius:2px;padding:1px 7px;height:20px}
+.dot{width:6px;height:6px;border-radius:50%;background:#1a7f37;box-shadow:0 0 0 2px #1a7f3722}
+.who{color:var(--ink2);padding:0 10px;border-left:1px solid #c3cedb;margin-left:8px;cursor:pointer}
+.who:hover{color:#12314f}
+
+/* ── 菜单 ───────────────────────────────────────────── */
+.menubar{
+  height:23px;flex:0 0 23px;display:flex;align-items:center;
+  background:#f4f7fa;border-bottom:1px solid var(--line2);padding:0 6px;user-select:none
+}
+.menubar span{padding:2px 9px;color:#2b3a49;cursor:default;border-radius:2px}
+.menubar span:hover{background:#dde7f1}
+
+/* ── 工具条 ─────────────────────────────────────────── */
+.toolbar{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  padding:5px 8px;background:var(--panel);border-bottom:1px solid var(--line);
+  box-shadow:0 1px 0 #fff inset;flex-wrap:wrap
+}
+.toolbar label{color:var(--ink2)}
+select,input[type=text]{
+  height:23px;border:1px solid #b9c4d0;background:#fff;border-radius:2px;
+  padding:0 4px;outline:none
+}
+select{padding-right:2px}
+input[type=text]{width:172px}
+select:focus,input[type=text]:focus{border-color:#7fa8cc;box-shadow:0 0 0 1px #cfe0ee}
+.btn{
+  height:23px;min-width:52px;padding:0 10px;border:1px solid #a9b6c4;border-radius:2px;
+  background:linear-gradient(#fdfefe,#eaeff5);color:#22303d;cursor:pointer
+}
+.btn:hover{background:linear-gradient(#fff,#dfeaf5);border-color:#8aa5bf}
+.btn:active{background:#d8e4f0;box-shadow:inset 0 1px 2px #b9c8d8}
+.btn.primary{border-color:#2a5d8c;background:linear-gradient(#3d76a8,#2a5d8c);color:#fff;font-weight:600}
+.btn.primary:hover{background:linear-gradient(#4683b7,#2f6a9e)}
+.sep{width:1px;height:16px;background:#d3dce6;margin:0 4px}
+.hint{margin-left:auto;color:var(--ink3);font-size:11px;display:flex;gap:12px;align-items:center}
+.hint b{color:var(--ink2);font-weight:400}
+
+/* ── 主体 ───────────────────────────────────────────── */
+.body{flex:1;display:flex;min-height:0;position:relative}
+
+.side{
+  width:172px;flex:0 0 172px;background:#f7f9fb;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0
+}
+.side h4{
+  margin:0;padding:6px 9px;font-size:11px;font-weight:600;color:#4a5765;
+  letter-spacing:.4px;background:#eef2f7;border-bottom:1px solid var(--line2)
+}
+.side ul{list-style:none;margin:4px 0 0;padding:0;overflow:auto}
+.side li{
+  padding:4px 9px 4px 18px;position:relative;cursor:pointer;color:#2c3a47;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.side li:before{
+  content:"";position:absolute;left:8px;top:9px;width:5px;height:5px;
+  border:1px solid #9dabb9;background:#fff
+}
+.side li:hover{background:#e9f1f9}
+.side li.on{background:var(--sel);color:#12395d;font-weight:600}
+.side li.on:before{background:#2a6ba8;border-color:#2a6ba8}
+.side .foot{margin-top:auto;padding:6px 9px;border-top:1px solid var(--line2);color:var(--ink3);font-size:11px}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--panel);position:relative}
+
+.gridwrap{flex:1;overflow:auto;position:relative}
+table.grid{border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed}
+table.grid th{
+  position:sticky;top:0;z-index:2;height:26px;font-weight:600;font-size:11.5px;
+  color:#33414f;text-align:left;padding:0 7px;white-space:nowrap;
+  background:linear-gradient(#f6f9fc,#e8eef5);
+  border-right:1px solid #dde4ec;border-bottom:1px solid #b9c6d4;
+  user-select:none
+}
+table.grid th:last-child{border-right:0}
+table.grid td{
+  height:24px;padding:0 7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  border-right:1px solid #f1f4f8;border-bottom:1px solid #eef1f5;color:#20272e
+}
+table.grid td.n{text-align:right;font-variant-numeric:tabular-nums}
+table.grid tbody tr:nth-child(even){background:#fbfcfd}
+table.grid tbody tr:hover{background:var(--hover)}
+table.grid tbody tr.sel{background:var(--sel);box-shadow:inset 2px 0 0 var(--accent2)}
+table.grid tbody tr{cursor:default}
+.c-id{font-family:"Consolas","Cascadia Mono",monospace;color:#2b4a68;font-size:11.5px}
+.c-sub{color:#3a4653}
+.c-cat{color:#4a5765}
+.c-upd{color:#5b6773;font-variant-numeric:tabular-nums}
+.st{display:inline-flex;align-items:center;gap:5px}
+.st:before{content:"";width:5px;height:5px;border-radius:50%}
+.st.ok{color:var(--ok)} .st.ok:before{background:var(--ok)}
+.st.warn{color:var(--warn)} .st.warn:before{background:#c28a00}
+.st.mut{color:var(--mut)} .st.mut:before{background:#98a2ad}
+.pin{color:#a06a00;font-size:10px;border:1px solid #e2cfa6;background:#fdf6e7;
+  border-radius:2px;padding:0 3px;margin-left:5px;vertical-align:1px}
+.lk{display:inline-block;min-width:20px;text-align:center;color:#8a5b60;font-size:10px;
+  font-family:Consolas,"Cascadia Mono",monospace;border:1px solid #e6d2d4;background:#fbf5f5;
+  border-radius:2px;padding:0 3px;margin-right:5px;vertical-align:1px}
+.locknote{margin:10px;padding:10px 12px;border:1px solid #e6d3a8;background:#fdf8ec;
+  color:#6b5416;border-radius:2px;line-height:1.75;font-size:12px}
+.locknote b{display:block;color:#8a6100;margin-bottom:4px;font-size:12.5px}
+.locknote code{font-family:Consolas,monospace;background:#f6efdd;border:1px solid #e8dcc0;
+  border-radius:2px;padding:0 3px}
+.locknote .btn{margin-top:9px}
+.badge{display:none;margin-left:4px;background:#c0392b;color:#fff;border-radius:8px;
+  padding:0 4px;font-size:10px;line-height:13px;font-weight:600}
+.badge.on{display:inline-block}
+.nf-tabs{display:flex;border-bottom:1px solid #e4eaf1;background:#f7f9fb}
+.nf-tabs button{border:0;background:none;padding:6px 14px;cursor:pointer;color:#4a5765;
+  border-bottom:2px solid transparent;font-size:12px}
+.nf-tabs button:hover{background:#eef4fa}
+.nf-tabs button.on{color:#12395d;border-bottom-color:#2a6d9e;background:#fff;font-weight:600}
+.nf-list{max-height:56vh;min-height:180px;overflow:auto}
+.nf-item{padding:7px 12px;border-bottom:1px solid #f0f3f7;cursor:pointer}
+.nf-item:hover{background:#f4f8fc}
+.nf-item.sys{cursor:default}
+.nf-item.unread .nf-t{font-weight:600}
+.nf-l1{display:flex;gap:8px;align-items:baseline}
+.nf-id{font-family:Consolas,"Cascadia Mono",monospace;color:#2b4a68;font-size:11.5px;flex:0 0 auto}
+.nf-t{color:#20272e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nf-l2{color:#8b96a2;font-size:11px;margin-top:2px}
+.nf-dot{width:5px;height:5px;border-radius:50%;background:#c0392b;display:inline-block;
+  margin-right:5px;vertical-align:1px}
+.nf-empty{padding:46px 0;text-align:center;color:#8b96a2}
+#rows tr.hit{background:#fdf3d8}
+
+.skel td{padding:0 7px}
+.skel div{height:8px;background:linear-gradient(90deg,#eef2f6,#e3e9ef,#eef2f6);
+  background-size:200% 100%;animation:sh 1.2s linear infinite;border-radius:1px}
+@keyframes sh{0%{background-position:0 0}100%{background-position:-200% 0}}
+.empty{padding:60px 0;text-align:center;color:var(--ink3)}
+.empty b{display:block;color:#89939e;font-weight:400;margin-bottom:4px}
+
+/* ── 状态栏 ─────────────────────────────────────────── */
+.statusbar{
+  flex:0 0 23px;height:23px;display:flex;align-items:center;gap:14px;
+  padding:0 8px;background:#f2f5f8;border-top:1px solid var(--line);color:var(--ink2);
+  font-size:11px;user-select:none
+}
+.statusbar .right{margin-left:auto;display:flex;gap:12px;align-items:center}
+.statusbar .err{color:#a4262c}
+.pager{display:flex;align-items:center;gap:3px}
+.pager button{
+  min-width:20px;height:17px;padding:0 5px;border:1px solid #c4cfda;background:#fff;
+  border-radius:2px;cursor:pointer;color:#33414f;font-size:11px;line-height:15px
+}
+.pager button:hover:not(:disabled){background:#eaf2fa;border-color:#8fb0cd}
+.pager button:disabled{color:#aeb8c2;cursor:default;background:#f6f8fa}
+.pager button.cur{background:#2a5d8c;border-color:#2a5d8c;color:#fff;font-weight:600}
+.pager .gap{color:#9aa4ae;padding:0 2px}
+
+/* ── 明细抽屉 ───────────────────────────────────────── */
+.drawer{
+  position:absolute;top:0;right:0;bottom:0;width:47%;min-width:430px;max-width:760px;
+  background:var(--panel);border-left:1px solid #b9c6d4;
+  box-shadow:-3px 0 10px rgba(30,45,60,.09);
+  display:none;flex-direction:column;z-index:5
+}
+.drawer.on{display:flex}
+.drawer .dhead{
+  flex:0 0 27px;display:flex;align-items:center;gap:8px;padding:0 8px;
+  background:linear-gradient(#f6f9fc,#e6edf4);border-bottom:1px solid #b9c6d4;
+  font-weight:600;color:#22384f;user-select:none
+}
+.drawer .dhead .tag{font-weight:400;color:var(--ink3);font-family:Consolas,monospace}
+.drawer .dhead .x{
+  margin-left:auto;width:18px;height:18px;border:1px solid transparent;background:none;
+  color:#5b6773;cursor:pointer;font-size:13px;line-height:1;border-radius:2px
+}
+.drawer .dhead .x:hover{background:#dbe7f2;border-color:#b9cfe4;color:#1b3a55}
+.dbody{flex:1;overflow:auto;padding:0 0 8px}
+.fieldset{margin:8px 10px 0;border:1px solid #dde5ee;border-radius:2px;overflow:hidden}
+.fieldset .ft{
+  padding:3px 8px;background:#f2f6fa;border-bottom:1px solid #e3eaf2;
+  color:#41505f;font-weight:600;font-size:11.5px
+}
+table.kv{width:100%;border-collapse:collapse;table-layout:fixed}
+table.kv th{
+  width:82px;text-align:left;font-weight:400;color:var(--ink2);background:#fafbfd;
+  padding:3px 8px;border-bottom:1px solid #eef2f7;border-right:1px solid #eef2f7;
+  vertical-align:top;white-space:nowrap
+}
+table.kv td{
+  padding:3px 8px;border-bottom:1px solid #eef2f7;color:#1d242b;
+  overflow:hidden;text-overflow:ellipsis
+}
+table.kv tr:last-child th,table.kv tr:last-child td{border-bottom:0}
+.note{padding:7px 10px 9px;color:#222a32;font-size:12.5px;line-height:1.72;word-wrap:break-word}
+.note p{margin:0 0 7px}
+.note p:last-child{margin-bottom:0}
+.note h1,.note h2,.note h3,.note h4{
+  font-size:12.5px;margin:10px 0 5px;color:#1b3a55;font-weight:600;
+  border-left:2px solid #a8bfd6;padding-left:6px
+}
+.note ul,.note ol{margin:0 0 7px;padding-left:20px}
+.note li{margin:1px 0}
+.note blockquote{margin:0 0 7px;padding:4px 8px;border-left:2px solid #d6dfe8;
+  background:#f7f9fb;color:#485562}
+.note pre{
+  margin:0 0 7px;padding:6px 8px;background:#f7f9fc;border:1px solid #e2e8f0;
+  border-radius:2px;font:11.5px/1.6 Consolas,"Cascadia Mono",monospace;color:#2b3947;
+  white-space:pre-wrap;overflow-wrap:anywhere
+}
+.note code{font:11.5px Consolas,"Cascadia Mono",monospace;background:#f2f5f9;
+  border:1px solid #e6ecf3;border-radius:2px;padding:0 3px;color:#2b3947}
+.note pre code{border:0;background:none;padding:0}
+.note table{border-collapse:collapse;margin:0 0 7px;font-size:11.5px}
+.note th,.note td{border:1px solid #e1e8f0;padding:2px 6px}
+.note .im{color:#7b8794;background:#f2f5f9;border:1px solid #dde5ee;border-radius:2px;
+  padding:0 4px;font-size:11px;cursor:default}
+.note .lnk{color:#2a5f8a;border-bottom:1px dotted #9fb6cb;cursor:pointer}
+.note a.lnk{text-decoration:none}
+.note .lnk:hover{color:#17466f;border-bottom-style:solid}
+.note hr{border:0;border-top:1px solid #e7edf4;margin:8px 0}
+
+table.logs{width:100%;border-collapse:collapse;table-layout:fixed}
+table.logs th{
+  text-align:left;font-weight:600;color:#41505f;background:#f7fafc;font-size:11px;
+  padding:3px 8px;border-bottom:1px solid #e3eaf2
+}
+table.logs td{padding:4px 8px;border-bottom:1px solid #f0f3f7;vertical-align:top}
+table.logs tr:last-child td{border-bottom:0}
+.lg-head{color:#485562;font-size:11px;white-space:nowrap}
+.lg-head b{color:#22384f;font-weight:600}
+.lg-body{color:#232b33;line-height:1.66;word-wrap:break-word;font-size:12.5px}
+.lg-body p{margin:0 0 5px}
+.lg-body p:last-child{margin:0}
+.dfoot{
+  flex:0 0 27px;display:flex;align-items:center;gap:8px;padding:0 8px;
+  border-top:1px solid var(--line);background:#f7f9fb;color:var(--ink2);font-size:11px
+}
+.dfoot .btn{height:19px;min-width:44px;font-size:11px;line-height:17px}
+.dreply{flex:0 0 auto;padding:6px 10px 7px;border-top:1px solid #e4eaf1;background:#fbfcfd}
+.dreply textarea{min-height:42px;max-height:120px;resize:vertical}
+.dreply-row{display:flex;align-items:center;gap:8px;margin-top:5px}
+.dreply-row .tip{margin-right:auto}
+.dreply .btn{height:21px;min-width:52px}
+.rp-tb{display:flex;align-items:center;gap:1px;margin-bottom:4px}
+.rp-tb button{height:18px;min-width:20px;padding:0 5px;border:1px solid transparent;background:none;
+  border-radius:2px;cursor:pointer;color:#5a6774;font-size:11px;line-height:16px}
+.rp-tb button:hover{background:#e8f0f8;border-color:#c5d8e8;color:#12395d}
+
+/* ── 附件 ───────────────────────────────────────────── */
+.imgph{
+  display:inline-flex;align-items:center;gap:4px;padding:0 5px;margin:1px 2px;
+  border:1px dashed #c3cdd8;background:#f7f9fb;color:#5b6773;font-size:11px;
+  border-radius:2px;cursor:pointer;user-select:none
+}
+.imgph:hover{background:#eaf2fa;border-color:#8fb0cd;color:#2a5f8a}
+.imgph i{width:0;height:0;border-left:4px solid #8b96a2;border-top:3px solid transparent;
+  border-bottom:3px solid transparent;display:block}
+figure.att{
+  display:inline-block;max-width:100%;margin:6px 6px 6px 0;padding:5px;
+  border:1px solid #e1e8f0;background:#fbfcfd;border-radius:2px;cursor:zoom-out;
+  vertical-align:top
+}
+figure.att img{display:block;max-width:100%;max-height:520px;background:#fff}
+figure.att figcaption{color:#8b96a2;font-size:10.5px;text-align:center;padding-top:4px}
+.att-err{color:#a4262c;font-size:11px;padding:10px;text-align:center}
+.chk{display:inline-flex;align-items:center;gap:4px;color:var(--ink2);cursor:pointer;user-select:none}
+.chk input{margin:0}
+
+/* ── 对话框 ─────────────────────────────────────────── */
+.mask{position:fixed;inset:0;background:rgba(30,42,54,.32);display:none;
+  align-items:center;justify-content:center;z-index:920}
+.mask.on{display:flex}
+.dlg{
+  background:#fff;border:1px solid #a8b6c6;border-radius:3px;
+  box-shadow:0 10px 30px rgba(20,32,44,.25);display:flex;flex-direction:column;
+  max-width:94vw;max-height:88vh
+}
+.dlg-h{
+  height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;
+  background:linear-gradient(#f7fafc,#e4ecf4);border-bottom:1px solid #b9c6d4;
+  font-weight:600;color:#22384f;user-select:none
+}
+.dlg-h .r{margin-left:auto;font-weight:400;color:#8b96a2;font-size:11px}
+.dlg-h .x{margin-left:8px;width:18px;height:18px;border:1px solid transparent;background:none;
+  color:#5b6773;cursor:pointer;font-size:13px;line-height:1;border-radius:2px}
+.dlg-h .x:hover{background:#dbe7f2;border-color:#b9cfe4;color:#1b3a55}
+.dlg-b{padding:12px 14px;overflow:auto}
+.dlg-f{display:flex;align-items:center;gap:6px;justify-content:flex-end;
+  padding:9px 12px;border-top:1px solid #e4eaf1;background:#f7f9fb}
+.dlg-f .tip{margin-right:auto}
+.fl{display:block;color:#55616e;margin:0 0 4px}
+.fl:not(:first-child){margin-top:10px}
+textarea{width:100%;border:1px solid #b9c4d0;border-radius:2px;padding:5px 6px;
+  font:12px/1.65 inherit;color:var(--ink);resize:vertical;outline:none;background:#fff}
+textarea:focus{border-color:#7fa8cc;box-shadow:0 0 0 1px #cfe0ee}
+.dlg-b input[type=text]{width:100%;height:24px}
+.tip{color:#8b96a2;font-size:11px;line-height:1.6}
+.auth-state{padding:5px 8px;background:#f5f8fb;border:1px solid #e2e9f0;border-radius:2px;
+  color:#41505f;margin-bottom:10px}
+.auth-state b{color:#1a5fb4}
+.rp{padding:7px 10px 9px}
+.rp textarea{min-height:54px}
+.rp-f{display:flex;align-items:center;gap:8px;margin-top:6px}
+.rp-f .tip{margin-right:auto}
+.row2{display:flex;gap:10px}
+.row2>div{flex:1}
+
+/* ── 说明编辑器 ─────────────────────────────────────── */
+.mde{border:1px solid #b9c4d0;border-radius:2px;background:#fff;overflow:hidden}
+.mde:focus-within{border-color:#7fa8cc;box-shadow:0 0 0 1px #cfe0ee}
+.mde-tb{display:flex;align-items:center;gap:1px;padding:3px 4px;background:#f7f9fb;
+  border-bottom:1px solid #e4eaf1;flex-wrap:wrap}
+.mde-tb button{height:20px;min-width:22px;padding:0 5px;border:1px solid transparent;background:none;
+  border-radius:2px;cursor:pointer;color:#3a4653;font-size:11.5px;line-height:18px}
+.mde-tb button:hover{background:#e8f0f8;border-color:#c5d8e8}
+.mde-tb button.on{background:#dce9f5;border-color:#a9c6de;color:#12395d}
+.mde-sep{width:1px;height:14px;background:#dde4ec;margin:0 4px}
+.mde-sp{flex:1}
+.mde-tb .mde-tab{min-width:34px;color:#55616e}
+.mde-body{position:relative}
+.mde textarea{display:block;width:100%;min-height:210px;max-height:46vh;border:0;border-radius:0;
+  padding:8px 10px;font:12.5px/1.75 Consolas,"Cascadia Mono","Microsoft YaHei",monospace;resize:vertical}
+.mde textarea:focus{box-shadow:none}
+.mde-pv{padding:8px 10px;min-height:210px;max-height:46vh;overflow:auto}
+.mde-ft{display:flex;align-items:center;gap:10px;padding:3px 8px;border-top:1px solid #eef2f6;
+  background:#fbfcfd;color:#8b96a2;font-size:11px}
+.mde-ft .tip{margin-left:auto}
+
+/* ── 遮罩 / 提示 ────────────────────────────────────── */
+#veil{
+  position:fixed;inset:0;z-index:900;background:rgba(243,246,249,.975);
+  backdrop-filter:blur(1.5px);
+  display:none;align-items:center;justify-content:center
+}
+#veil.on{display:flex}
+.veil-box{
+  width:560px;max-width:94vw;background:#fff;border:1px solid #a8b6c6;border-radius:3px;
+  box-shadow:0 8px 26px rgba(28,42,56,.18);overflow:hidden
+}
+.veil-head{
+  height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;
+  background:linear-gradient(#f7fafc,#e4ecf4);border-bottom:1px solid #b9c6d4;
+  font-weight:600;color:#22384f;font-size:12px;user-select:none
+}
+.veil-head .r{margin-left:auto;font-weight:400;color:#8b96a2;font-size:11px}
+.veil-body{padding:13px 16px 14px}
+.veil-t{font-size:12.5px;color:#22303d;margin-bottom:2px}
+.veil-s{font-size:11.5px;color:#7d8893;margin-bottom:10px}
+.bar{height:7px;background:#eef1f5;border:1px solid #dde4ec;border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:38%;background:
+  repeating-linear-gradient(45deg,#9db8d1,#9db8d1 6px,#b7ccdf 6px,#b7ccdf 12px);
+  animation:run 1.9s ease-in-out infinite}
+@keyframes run{0%{margin-left:-40%}100%{margin-left:100%}}
+.log{
+  margin-top:10px;height:172px;overflow:hidden;background:#fafbfc;border:1px solid #e4eaf1;
+  border-radius:2px;padding:7px 9px;font:11px/1.72 Consolas,"Cascadia Mono",monospace;
+  color:#5c6a78
+}
+.log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log .t{color:#98a3af}
+.veil-f{margin-top:11px;display:flex;justify-content:flex-end;gap:6px}
+.veil-f .btn{height:22px;min-width:64px}
+
+#toast{
+  position:fixed;right:14px;bottom:34px;z-index:950;display:flex;flex-direction:column;
+  gap:6px;align-items:flex-end;pointer-events:none
+}
+#toast div{
+  background:#22303d;color:#e8eef4;padding:5px 10px;border-radius:2px;font-size:11.5px;
+  box-shadow:0 2px 8px rgba(20,30,40,.22);opacity:0;transform:translateY(4px);
+  transition:.18s
+}
+#toast div.in{opacity:1;transform:none}
+
+::-webkit-scrollbar{width:13px;height:13px}
+::-webkit-scrollbar-track{background:#f4f6f9}
+::-webkit-scrollbar-thumb{background:#c3cdd8;border:3px solid #f4f6f9;border-radius:7px}
+::-webkit-scrollbar-thumb:hover{background:#a9b6c4}
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="brand">
+    <svg width="15" height="15" viewBox="0 0 16 16"><rect width="16" height="16" fill="#2f4f6f"/><path d="M3 4.5h10M3 8h10M3 11.5h10M6.5 3v10M10 3v10" stroke="#c9d6e4" stroke-width=".9"/></svg>
+    <b>报表中心</b>
+  </div>
+  <div class="crumb">财务核算<i>/</i>收入对账<i>/</i><span class="cur">明细表</span></div>
+  <div class="spacer"></div>
+  <div class="env"><span class="dot"></span>生产库 ORCL_PROD</div>
+  <div class="who" id="who" title="操作员认证">User</div>
+</div>
+
+<div class="menubar">
+  <span>文件</span><span>编辑</span><span>视图</span><span>数据</span><span>工具</span><span>帮助</span>
+</div>
+
+<div class="toolbar">
+  <label>账期</label>
+  <select id="period">
+    <option>2026-10</option><option>2026-09</option><option>2026-08</option><option>2026-Q3</option>
+  </select>
+  <label>排序</label>
+  <select id="sort">
+    <option value="replyTime">最后更新时间</option>
+    <option value="createTime">单据创建时间</option>
+  </select>
+  <label>关键字</label>
+  <input type="text" id="kw" placeholder="摘要 / 单据编号" autocomplete="off">
+  <span class="sep"></span>
+  <button class="btn primary" id="go">查询</button>
+  <button class="btn" id="reset">重置</button>
+  <span class="sep"></span>
+  <button class="btn" id="exp">导出</button>
+  <button class="btn" id="prt">打印</button>
+  <span class="sep"></span>
+  <button class="btn" id="newpost">新建单据</button>
+  <button class="btn" id="checkin">日结</button>
+  <button class="btn" id="notify">待办<i class="badge" id="nf-badge">0</i></button>
+  <label class="chk"><input type="checkbox" id="imgs"> 附件预览</label>
+  <div class="hint">
+    <span>数据源 <b>ORCL_PROD</b></span>
+    <span>权限 <b id="perm">只读</b></span>
+    <span id="fetchtime">—</span>
+  </div>
+</div>
+
+<div class="body">
+  <div class="side">
+    <h4>业务类型</h4>
+    <ul id="cats"></ul>
+    <div class="foot">方案：收入对账（日）</div>
+  </div>
+
+  <div class="main">
+    <div class="gridwrap">
+      <table class="grid">
+        <colgroup>
+          <col style="width:46px"><col style="width:106px"><col style="width:74px">
+          <col><col style="width:108px"><col style="width:76px">
+          <col style="width:82px"><col style="width:92px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>序号</th><th>单据编号</th><th>业务类型</th><th>摘要</th>
+            <th style="text-align:right">金额(元)</th><th style="text-align:right">记录数</th>
+            <th>状态</th><th>最后更新</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <div class="drawer" id="drawer">
+      <div class="dhead">
+        <span>单据明细</span><span class="tag" id="d-no"></span>
+        <button class="x" id="d-close" title="关闭 (Esc)">✕</button>
+      </div>
+      <div class="dbody" id="d-body"></div>
+      <div class="dreply">
+        <div class="rp-tb">
+          <button data-md2="b" title="粗体"><b>B</b></button>
+          <button data-md2="i" title="斜体"><i>I</i></button>
+          <button data-md2="s" title="删除线"><s>S</s></button>
+          <button data-md2="code" title="行内代码">代码</button>
+          <button data-md2="quote" title="引用">引用</button>
+          <button data-md2="ul" title="列表">• 列表</button>
+          <button data-md2="link" title="链接">链接</button>
+        </div>
+        <textarea id="rp-text" rows="2" placeholder="填写处理意见，Ctrl+Enter 提交"></textarea>
+        <div class="dreply-row">
+          <span class="tip" id="rp-tip"></span>
+          <button class="btn primary" id="rp-send">提交</button>
+        </div>
+      </div>
+      <div class="dfoot" id="d-foot"></div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <span id="s-total">—</span>
+  <span id="s-page"></span>
+  <span id="s-cost"></span>
+  <span class="err" id="s-err"></span>
+  <div class="right">
+    <div class="pager" id="pager"></div>
+  </div>
+</div>
+
+<div id="veil">
+  <div class="veil-box">
+    <div class="veil-head">查询执行中 — ORCL_PROD<span class="r">SQL 窗口 1</span></div>
+    <div class="veil-body">
+      <div class="veil-t">正在读取收入对账数据，请稍候…</div>
+      <div class="veil-s">会话 READ ONLY ｜ 已用 1.84s ｜ 预计剩余 3s</div>
+      <div class="bar"><i></i></div>
+      <div class="log" id="vlog"></div>
+      <div class="veil-f"><button class="btn" id="vclose">取消 (Esc)</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="m-auth">
+  <div class="dlg" style="width:540px">
+    <div class="dlg-h">操作员认证<span class="r">凭据仅保存在本机</span>
+      <button class="x" data-close="m-auth">✕</button></div>
+    <div class="dlg-b">
+      <div class="auth-state" id="auth-state">当前：未认证（只能查看）</div>
+      <label class="fl">认证令牌</label>
+      <textarea id="auth-cookie" rows="4" spellcheck="false"
+        placeholder="nsk-session=..."></textarea>
+      <div class="tip" style="margin-top:6px">
+        浏览器里登录论坛后，F12 → 网络(Network) → 任选一个请求 → 请求标头里的 Cookie 整行，
+        原样粘到这里。服务端用它代你提交，凭据存在本机 ~/.config/report-center/，不回传任何地方。
+      </div>
+    </div>
+    <div class="dlg-f">
+      <span class="tip" id="auth-tip"></span>
+      <button class="btn" id="auth-clear">清除凭据</button>
+      <button class="btn primary" id="auth-save">验证并保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="m-notify">
+  <div class="dlg" style="width:760px">
+    <div class="dlg-h">待办事项<span class="r" id="nf-sum"></span>
+      <button class="x" data-close="m-notify">✕</button></div>
+    <div class="dlg-b" style="padding:0">
+      <div class="nf-tabs">
+        <button data-tab="at" class="on">抄送我的</button>
+        <button data-tab="reply">待我处理</button>
+        <button data-tab="msg">系统消息</button>
+      </div>
+      <div class="nf-list" id="nf-list"></div>
+    </div>
+    <div class="dlg-f">
+      <span class="tip" id="nf-tip"></span>
+      <button class="btn" id="nf-more">加载更多</button>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="m-new">
+  <div class="dlg" style="width:620px">
+    <div class="dlg-h">新建单据<span class="r">提交后进入待复核</span>
+      <button class="x" data-close="m-new">✕</button></div>
+    <div class="dlg-b">
+      <div class="row2">
+        <div style="flex:0 0 132px">
+          <label class="fl">业务类型</label>
+          <select id="np-cat" style="width:100%"></select>
+        </div>
+        <div style="flex:0 0 128px">
+          <label class="fl">阅读限制</label>
+          <select id="np-rank" style="width:100%"></select>
+        </div>
+        <div>
+          <label class="fl">摘要</label>
+          <input type="text" id="np-title" maxlength="120" placeholder="单据摘要">
+        </div>
+      </div>
+      <label class="fl">说明</label>
+      <div class="mde" id="np-mde">
+        <div class="mde-tb">
+          <button data-md="h" title="标题">H</button>
+          <button data-md="b" title="粗体 Ctrl+B"><b>B</b></button>
+          <button data-md="i" title="斜体 Ctrl+I"><i>I</i></button>
+          <button data-md="s" title="删除线"><s>S</s></button>
+          <span class="mde-sep"></span>
+          <button data-md="quote" title="引用">引用</button>
+          <button data-md="code" title="行内代码">代码</button>
+          <button data-md="pre" title="代码块">代码块</button>
+          <span class="mde-sep"></span>
+          <button data-md="ul" title="无序列表">• 列表</button>
+          <button data-md="ol" title="有序列表">1. 列表</button>
+          <button data-md="hr" title="分割线">分割线</button>
+          <span class="mde-sep"></span>
+          <button data-md="link" title="插入链接 Ctrl+K">链接</button>
+          <span class="mde-sp"></span>
+          <button class="mde-tab on" data-mode="edit">编辑</button>
+          <button class="mde-tab" data-mode="view">预览</button>
+        </div>
+        <div class="mde-body">
+          <textarea id="np-body" placeholder="支持 Markdown：**粗体**、`代码`、> 引用、- 列表"></textarea>
+          <div id="np-preview" class="mde-pv note" hidden></div>
+        </div>
+        <div class="mde-ft">
+          <span id="np-count">0 字</span>
+          <span id="np-draft"></span>
+          <span class="tip">Ctrl+Enter 提交，草稿自动保存</span>
+        </div>
+      </div>
+    </div>
+    <div class="dlg-f">
+      <span class="tip" id="np-tip"></span>
+      <button class="btn" data-close="m-new">取消</button>
+      <button class="btn primary" id="np-send">提交</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const K = new URLSearchParams(location.search).get("k") || "";
+const api = p => p + (K ? (p.includes("?") ? "&" : "?") + "k=" + encodeURIComponent(K) : "");
+
+const S = {
+  page: 1, pages: 1, cat: "", sort: "replyTime", kw: "",
+  rows: [], sel: -1, post: null, postPage: 1, postPages: 1, busy: false, veil: false,
+  user: null, imgs: false
+};
+
+const CATS = [
+  ["", "全部"], ["daily", "日常"], ["tech", "技术"], ["info", "情报"],
+  ["review", "测评"], ["trade", "交易"], ["carpool", "拼车"], ["promotion", "推广"],
+  ["life", "生活"], ["dev", "Dev"], ["photo-share", "贴图"], ["expose", "曝光"],
+  ["sandbox", "沙盒"], ["meaningless", "无意义"]
+];
+
+/* ── 工具 ─────────────────────────────────────────── */
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
+  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function money(id) {
+  let x = (id * 2654435761) % 4294967296;
+  x = x / 4294967296;
+  return (120 + x * 98000).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function stamp(t) {
+  const m = /^(\d{4})-(\d\d)-(\d\d)[ T](\d\d:\d\d)/.exec(t || "");
+  return m ? `${m[2]}-${m[3]} ${m[4]}` : (t || "—");
+}
+function stOf(c) {
+  if (c === 0) return ["待复核", "warn"];
+  return c % 3 === 0 ? ["已核销", "ok"] : ["已对账", "mut"];
+}
+function toast(msg) {
+  const d = document.createElement("div");
+  d.textContent = msg;
+  $("#toast").appendChild(d);
+  requestAnimationFrame(() => d.classList.add("in"));
+  setTimeout(() => { d.classList.remove("in"); setTimeout(() => d.remove(), 250); }, 2600);
+}
+
+/* ── 列表 ─────────────────────────────────────────── */
+function renderCats() {
+  $("#cats").innerHTML = CATS.map(([k, n]) =>
+    `<li data-cat="${k}" class="${S.cat === k ? "on" : ""}">${n}</li>`).join("");
+}
+
+function skeleton(n) {
+  const cols = [30, 80, 40, 0, 70, 40, 50, 66];
+  let h = "";
+  for (let i = 0; i < n; i++) {
+    h += "<tr class='skel'>";
+    cols.forEach(w => {
+      h += "<td>" + (w ? `<div style="width:${w}%;margin-left:${w < 60 ? "auto" : "0"}"></div>` : "<div style='width:70%'></div>") + "</td>";
+    });
+    h += "</tr>";
+  }
+  $("#rows").innerHTML = h;
+}
+
+function visible() {
+  const kw = S.kw.trim().toLowerCase();
+  if (!kw) return S.rows;
+  return S.rows.filter(r =>
+    r.title.toLowerCase().includes(kw) || String(r.id).includes(kw) ||
+    (r.author || "").toLowerCase().includes(kw) || (r.cat || "").toLowerCase().includes(kw));
+}
+
+function renderRows() {
+  const list = visible();
+  if (!list.length) {
+    $("#rows").innerHTML = `<tr><td colspan="8"><div class="empty"><b>无符合条件的记录</b>请调整查询条件后重试</div></td></tr>`;
+    return;
+  }
+  // 序号按当前页整体行号显示，筛选后仍保留原始行号
+  const all = S.rows;
+  $("#rows").innerHTML = list.map(r => {
+    const idx = all.indexOf(r);
+    const [st, cl] = stOf(r.comments);
+    return `<tr data-i="${idx}" class="${idx === S.sel ? "sel" : ""}">
+      <td class="n" style="color:#8b96a2">${String(idx + 1).padStart(3, "0")}</td>
+      <td class="c-id">NS-${r.id}</td>
+      <td class="c-cat">${esc(r.cat || "—")}</td>
+      <td class="c-sub" title="${esc(r.title)}">${r.need_level !== null && r.need_level !== undefined ? `<span class="lk" title="阅读权限 Lv${r.need_level}">Lv${r.need_level}</span>` : ""}${esc(r.title)}${r.pinned ? '<span class="pin">优</span>' : ""}</td>
+      <td class="n">${money(r.id)}</td>
+      <td class="n">${r.views.toLocaleString("zh-CN")}</td>
+      <td><span class="st ${cl}">${st}</span></td>
+      <td class="c-upd">${stamp(r.time)}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderPager() {
+  const p = S.page, n = S.pages;
+  let nums = [];
+  const push = v => { if (!nums.includes(v)) nums.push(v); };
+  push(1);
+  for (let i = p - 1; i <= p + 1; i++) if (i > 1 && i < n) push(i);
+  if (n > 1) push(n);
+  nums.sort((a, b) => a - b);
+  let h = `<button data-p="prev" ${p <= 1 ? "disabled" : ""}>‹</button>`;
+  let last = 0;
+  nums.forEach(v => {
+    if (last && v - last > 1) h += `<span class="gap">…</span>`;
+    h += `<button data-p="${v}" class="${v === p ? "cur" : ""}">${v}</button>`;
+    last = v;
+  });
+  h += `<button data-p="next" ${p >= n ? "disabled" : ""}>›</button>`;
+  $("#pager").innerHTML = h;
+}
+
+async function load(page) {
+  if (S.busy) return;
+  S.busy = true;
+  S.page = page || 1;
+  closePost();
+  skeleton(14);
+  $("#s-err").textContent = "";
+  $("#s-total").textContent = "正在读取…";
+  const t0 = performance.now();
+  try {
+    const r = await fetch(api(`/api/list?page=${S.page}&cat=${encodeURIComponent(S.cat)}&sort=${S.sort}`), { cache: "no-store" });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "E-5000");
+    S.rows = d.items; S.pages = d.pages || 1;
+    const cost = ((performance.now() - t0) / 1000).toFixed(2);
+    renderRows(); renderPager();
+    $("#s-total").textContent = `共 ${(S.pages * S.rows.length).toLocaleString("zh-CN")} 条记录`;
+    $("#s-page").textContent = `第 ${S.page} / ${S.pages} 页`;
+    $("#s-cost").textContent = `读取耗时 ${cost}s`;
+    $("#fetchtime").textContent = "刷新 " + new Date().toLocaleTimeString("zh-CN", { hour12: false });
+  } catch (e) {
+    console.error(e);
+    $("#rows").innerHTML = `<tr><td colspan="8"><div class="empty"><b>查询失败</b>${esc(e.message)}</div></td></tr>`;
+    $("#s-total").textContent = "—";
+    $("#s-err").textContent = "E-5001 数据源连接失败";
+  } finally {
+    S.busy = false;
+  }
+}
+
+/* ── 明细 ─────────────────────────────────────────── */
+async function openPost(i, page) {
+  const row = S.rows[i];
+  if (!row) return;
+  S.sel = i;
+  [...document.querySelectorAll("#rows tr")].forEach(tr => {
+    const on = +tr.dataset.i === i;
+    tr.classList.toggle("sel", on);
+    if (on) tr.scrollIntoView({ block: "nearest" });
+  });
+  await loadPost(row, page || 1, 0);
+}
+
+// 从待办直接打开：列表里未必有这条单据，用概要占位
+async function openPostById(pid, title, page, floor) {
+  S.sel = -1;
+  document.querySelectorAll("#rows tr.sel").forEach(tr => tr.classList.remove("sel"));
+  await loadPost({ id: pid, title: title || "", author: "", views: 0, comments: 0,
+                   cat: "", time: "", pinned: false, need_level: null, stub: true },
+                 page || 1, floor || 0);
+}
+
+async function loadPost(row, page, floor) {
+  S.postPage = page || 1;
+  $("#drawer").classList.add("on");
+  $("#d-no").textContent = "NS-" + row.id;
+  $("#d-body").innerHTML = "<div class='empty'>正在读取明细…</div>";
+  $("#d-foot").innerHTML = "";
+  $("#rp-text").value = "";
+  $("#rp-tip").textContent = "";
+  try {
+    const r = await fetch(api(`/api/post?id=${row.id}&page=${S.postPage}`), { cache: "no-store" });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "E-5000");
+    if (d.locked) return renderLocked(row, d.lock);
+    S.post = d;
+    S.postPages = d.pages || 1;
+    renderPost(row, d);
+    if (floor) {
+      const tr = document.querySelector('#d-body tr[data-floor="' + floor + '"]');
+      if (tr) {
+        tr.scrollIntoView({ block: "center" });
+        tr.classList.add("hit");
+        setTimeout(() => tr.classList.remove("hit"), 2600);
+      } else {
+        toast("已打开单据，未定位到第 " + floor + " 楼");
+      }
+    }
+  } catch (e) {
+    console.error(e);
+    $("#d-body").innerHTML = `<div class="empty"><b>读取失败</b>${esc(e.message)}</div>`;
+  }
+}
+
+function renderLocked(row, lock) {
+  const lv = lock && lock.type === "level" ? lock.level : null;
+  const [st, cl] = stOf(row.comments);
+  const kv = `
+    <div class="fieldset">
+      <div class="ft">单据信息</div>
+      <table class="kv">
+        <tr><th>单据编号</th><td class="c-id">NS-${row.id}</td><th>业务类型</th><td>${esc(row.cat || "—")}</td></tr>
+        <tr><th>创建人</th><td>${esc(row.author || "—")}</td><th>最后更新</th><td>${esc(stamp(row.time))}</td></tr>
+        <tr><th>金额(元)</th><td>${money(row.id)}</td><th>记录状态</th><td><span class="st ${cl}">${st}</span></td></tr>
+        <tr><th>关联记录</th><td colspan="3">${row.comments} 条</td></tr>
+      </table>
+    </div>`;
+  const body = lv !== null
+    ? `<div class="locknote">
+         <b>该单据设置了阅读权限</b>
+         需要 <code>Lv${lv}</code> 及以上才能查看，当前账号等级不足，正文与经办记录未加载。
+         <div class="tip" style="margin-top:6px">权限由单据创建人设置，与查询条件无关。</div>
+       </div>`
+    : `<div class="locknote">
+         <b>该单据需要认证后才能查看</b>
+         未认证状态下只能看到概要信息。
+         <button class="btn primary" id="lk-auth">去认证</button>
+       </div>`;
+  $("#d-body").innerHTML = kv + body;
+  $("#d-body").scrollTop = 0;
+  $("#d-foot").innerHTML = `<span>—</span><span style="color:#8b96a2">受限单据</span>`;
+  document.querySelector(".dreply").style.display = "none";
+  const b = $("#lk-auth");
+  if (b) b.onclick = () => openMask("m-auth");
+}
+
+function renderPost(row, d) {
+  document.querySelector(".dreply").style.display = "";
+  const totalCount = row.stub ? (d.comments || []).length : row.comments;
+  const totalLabel = row.stub ? totalCount + " 条（本页）" : totalCount + " 条";
+  const [st, cl] = stOf(totalCount);
+  const kv = `
+    <div class="fieldset">
+      <div class="ft">单据信息</div>
+      <table class="kv">
+        <tr><th>单据编号</th><td class="c-id">NS-${row.id}</td><th>业务类型</th><td>${esc(d.cat || row.cat || "—")}</td></tr>
+        <tr><th>创建人</th><td>${esc(d.author || row.author)}</td><th>创建时间</th><td>${esc(d.time || "—")}</td></tr>
+        <tr><th>金额(元)</th><td class="n" style="text-align:left">${money(row.id)}</td><th>记录状态</th><td><span class="st ${cl}">${st}</span></td></tr>
+        <tr><th>关联记录</th><td colspan="3">${totalLabel}${row.time ? " / 最后变更 " + esc(stamp(row.time)) : ""}</td></tr>
+      </table>
+    </div>`;
+
+  const note = `
+    <div class="fieldset">
+      <div class="ft">摘要说明</div>
+      <div class="note">${d.html || "<p style='color:#8b96a2'>无说明内容</p>"}</div>
+    </div>`;
+
+  let logs = "";
+  if (d.comments && d.comments.length) {
+    logs = `
+      <div class="fieldset">
+        <div class="ft">经办记录（${d.comments.length} 条）</div>
+        <table class="logs">
+          <colgroup><col style="width:44px"><col style="width:96px"><col style="width:104px"><col></colgroup>
+          <thead><tr><th>#</th><th>经办人</th><th>时间</th><th>说明</th></tr></thead>
+          <tbody>${d.comments.map(c => `
+            <tr data-floor="${esc(c.floor)}">
+              <td class="lg-head" style="color:#8b96a2">${esc(c.floor || "—")}</td>
+              <td class="lg-head"><b>${esc(c.author || "匿名")}</b></td>
+              <td class="lg-head">${esc(stamp(c.time))}</td>
+              <td class="lg-body">${c.html || "<span style='color:#9aa4ae'>（空）</span>"}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    logs = `<div class="fieldset"><div class="ft">经办记录</div><div class="note" style="color:#8b96a2">无经办记录</div></div>`;
+  }
+
+  $("#d-body").innerHTML = kv + note + logs;
+  $("#d-body").scrollTop = 0;
+  if (S.imgs) $("#d-body").querySelectorAll(".imgph").forEach(expandImg);
+
+  $("#d-foot").innerHTML = `
+    <span>第 ${S.postPage} / ${S.postPages} 页</span>
+    <span style="color:#8b96a2">共 ${totalCount} 条记录${row.stub ? "（本页）" : ""}</span>
+    <div style="margin-left:auto;display:flex;gap:5px">
+      <button class="btn" id="dp-prev" ${S.postPage <= 1 ? "disabled" : ""}>上一页</button>
+      <button class="btn" id="dp-next" ${S.postPage >= S.postPages ? "disabled" : ""}>下一页</button>
+    </div>`;
+  $("#dp-prev") && ($("#dp-prev").onclick = () => openPost(S.sel, S.postPage - 1));
+  $("#dp-next") && ($("#dp-next").onclick = () => openPost(S.sel, S.postPage + 1));
+}
+
+function closePost() {
+  document.querySelector(".dreply").style.display = "";
+  $("#drawer").classList.remove("on");
+  S.sel = -1;
+  [...document.querySelectorAll("#rows tr.sel")].forEach(tr => tr.classList.remove("sel"));
+}
+
+/* ── 遮罩 ─────────────────────────────────────────── */
+const VLOG = [
+  ["正在连接 ORCL_PROD (orcl-prod:1521) …", 0],
+  ["会话已建立 SID=1243 SERIAL#=41207  权限=READ ONLY", 260],
+  ["SELECT /*+ INDEX(T IDX_RECV_DT) */ … FROM FIN_RECON_DETAIL T", 520],
+  ["扫描分区 P202610 … 1,284,551 行", 900],
+  ["聚合：按业务类型分组统计金额与笔数 …", 1350],
+  ["关联结算主表 FIN_SETTLE_MAIN …", 1900],
+  ["排序：最后更新时间 DESC …", 2400],
+  ["结果集准备中 …", 2900]
+];
+let vtimer = null;
+
+function setVeil(on) {
+  S.veil = on;
+  $("#veil").classList.toggle("on", on);
+  clearInterval(vtimer);
+  if (!on) return;
+  $("#vlog").innerHTML = "";
+  VLOG.forEach(([line, delay]) => {
+    setTimeout(() => {
+      if (!S.veil) return;
+      const d = document.createElement("div");
+      d.innerHTML = `<span class="t">[${new Date().toLocaleTimeString("zh-CN", { hour12: false })}]</span> ${esc(line)}`;
+      $("#vlog").appendChild(d);
+      if ($("#vlog").children.length > 8) $("#vlog").firstElementChild.remove();
+    }, delay);
+  });
+}
+
+/* ── 事件 ─────────────────────────────────────────── */
+$("#cats").addEventListener("click", e => {
+  const li = e.target.closest("li");
+  if (!li) return;
+  S.cat = li.dataset.cat;
+  renderCats();
+  load(1);
+});
+
+$("#rows").addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-i]");
+  if (tr) openPost(+tr.dataset.i, 1);
+});
+
+$("#pager").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b || b.disabled) return;
+  const p = b.dataset.p;
+  load(p === "prev" ? S.page - 1 : p === "next" ? S.page + 1 : +p);
+});
+
+$("#go").onclick = () => load(1);
+$("#reset").onclick = () => {
+  S.cat = ""; S.sort = "replyTime"; S.kw = "";
+  $("#kw").value = ""; $("#sort").value = "replyTime";
+  renderCats(); load(1);
+};
+$("#sort").onchange = e => { S.sort = e.target.value; load(1); };
+$("#kw").oninput = e => { S.kw = e.target.value; renderRows(); };
+$("#kw").addEventListener("keydown", e => { if (e.key === "Enter") load(1); });
+$("#exp").onclick = () => toast("已导出 D:\\财务\\报表\\收入对账明细_202610.xlsx");
+$("#prt").onclick = () => toast("打印任务已提交：HP LaserJet M404（prn-fin-01）");
+$("#d-close").onclick = closePost;
+$("#vclose").onclick = () => setVeil(false);
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    e.preventDefault();
+    const mask = document.querySelector(".mask.on");
+    if (mask) return mask.classList.remove("on");
+    if (S.veil) return setVeil(false);
+    if ($("#drawer").classList.contains("on")) return closePost();
+    return setVeil(true);
+  }
+  if (S.veil) return;
+  const tg = e.target;
+  if (tg instanceof Element && tg.matches("input,select,textarea")) return;
+  if (e.key === "/") { e.preventDefault(); $("#kw").focus(); return; }
+  const n = visible().length;
+  if (!n) return;
+  if (e.key === "j" || e.key === "ArrowDown") {
+    e.preventDefault();
+    const list = visible();
+    const at = list.indexOf(S.rows[S.sel]);
+    openPost(S.rows.indexOf(list[Math.min(n - 1, at + 1)]), 1);
+  } else if (e.key === "k" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const list = visible();
+    const at = list.indexOf(S.rows[S.sel]);
+    const next = at <= 0 ? 0 : at - 1;
+    openPost(S.rows.indexOf(list[next]), 1);
+  }
+});
+
+/* ── 认证 ─────────────────────────────────────────── */
+function setSess(u) {
+  S.user = u || null;
+  const who = $("#who"), perm = $("#perm");
+  if (u) {
+    who.textContent = u.name;
+    who.title = "已认证，点击可重新认证";
+    perm.textContent = "可写";
+    perm.style.color = "#1a7f37";
+  } else {
+    who.textContent = "User";
+    who.title = "操作员认证";
+    perm.textContent = "只读";
+    perm.style.color = "";
+  }
+}
+
+async function refreshMe() {
+  try {
+    const r = await fetch(api("/api/me"), { cache: "no-store" });
+    const d = await r.json();
+    setSess(d.user);
+    return d.user;
+  } catch (e) { return null; }
+}
+
+function openMask(id) {
+  $("#" + id).classList.add("on");
+  if (id === "m-auth") syncAuthState();
+}
+function closeMask(id) { $("#" + id).classList.remove("on"); }
+
+document.querySelectorAll("[data-close]").forEach(b => {
+  b.onclick = () => closeMask(b.dataset.close);
+});
+document.querySelectorAll(".mask").forEach(m => {
+  m.addEventListener("click", e => { if (e.target === m) m.classList.remove("on"); });
+});
+
+function syncAuthState() {
+  $("#auth-state").innerHTML = S.user
+    ? "当前：<b>" + esc(S.user.name) + "</b>（成员 " + esc(String(S.user.id || "—")) + "）"
+    : "当前：未认证（只能查看）";
+}
+
+function needAuth() {
+  if (S.user) return true;
+  openMask("m-auth");
+  $("#auth-tip").textContent = "该操作需要先认证";
+  return false;
+}
+
+$("#who").onclick = () => openMask("m-auth");
+
+$("#auth-save").onclick = async () => {
+  const ck = $("#auth-cookie").value.trim();
+  if (!ck) { $("#auth-tip").textContent = "请先粘贴认证令牌"; return; }
+  $("#auth-tip").textContent = "校验中…";
+  try {
+    const r = await fetch(api("/api/login"), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cookie: ck })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "校验失败");
+    setSess(d.user);
+    syncAuthState();
+    $("#auth-cookie").value = "";
+    $("#auth-tip").textContent = "";
+    toast("认证成功：" + d.user.name);
+    setTimeout(() => closeMask("m-auth"), 600);
+  } catch (e) {
+    $("#auth-tip").textContent = e.message;
+  }
+};
+
+$("#auth-clear").onclick = async () => {
+  try { await fetch(api("/api/logout"), { method: "POST" }); } catch (e) { console.error(e); }
+  setSess(null);
+  syncAuthState();
+  toast("凭据已清除");
+};
+
+async function callApi(path, payload) {
+  const r = await fetch(api(path), {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  const d = await r.json().catch(() => ({ ok: false, error: "E-5000 响应异常" }));
+  if (d.auth === false) {
+    setSess(null);
+    openMask("m-auth");
+    $("#auth-tip").textContent = "会话已失效，请重新认证";
+  }
+  return d;
+}
+
+/* ── 日结 ─────────────────────────────────────────── */
+$("#checkin").onclick = async () => {
+  if (!needAuth()) return;
+  const b = $("#checkin");
+  b.disabled = true;
+  const old = b.textContent;
+  b.textContent = "处理中…";
+  try {
+    const d = await callApi("/api/checkin");
+    if (!d.ok && !d.got) throw new Error(d.error || d.raw || "执行失败");
+    toast(d.got ? "日结确认完成，本次记入 " + d.got + " 笔" : "日结确认完成");
+  } catch (e) {
+    toast("日结未执行：" + e.message);
+  } finally {
+    b.disabled = false;
+    b.textContent = old;
+  }
+};
+
+/* ── Markdown 编辑器 ──────────────────────────────── */
+function mdEscape(t) {
+  return String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+function mdInline(t) {
+  let x = mdEscape(t);
+  x = x.replace(/`([^`]+)`/g, "<code>$1</code>");
+  x = x.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<span class="im">[图]</span>');
+  x = x.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer nofollow">$1</a>');
+  x = x.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  x = x.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  x = x.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+  return x;
+}
+
+function mdToHtml(src) {
+  const lines = String(src || "").replace(/\r\n/g, "\n").split("\n");
+  const out = [];
+  let i = 0, list = null, para = [];
+  const flush = () => { if (para.length) { out.push("<p>" + mdInline(para.join(" ")) + "</p>"); para = []; } };
+  const closeList = () => { if (list) { out.push("</" + list + ">"); list = null; } };
+  while (i < lines.length) {
+    const ln = lines[i];
+    if (/^```/.test(ln)) {
+      flush(); closeList();
+      const buf = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
+      i++;
+      out.push("<pre><code>" + mdEscape(buf.join("\n")) + "</code></pre>");
+      continue;
+    }
+    if (/^\s*$/.test(ln)) { flush(); closeList(); i++; continue; }
+    let m;
+    if ((m = /^(#{1,4})\s+(.*)$/.exec(ln))) {
+      flush(); closeList();
+      const n = m[1].length;
+      out.push("<h" + n + ">" + mdInline(m[2]) + "</h" + n + ">"); i++; continue;
+    }
+    if (/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/.test(ln)) { flush(); closeList(); out.push("<hr>"); i++; continue; }
+    if (/^>\s?/.test(ln)) {
+      flush(); closeList();
+      const buf = [ln.replace(/^>\s?/, "")]; i++;
+      while (i < lines.length && /^>\s?/.test(lines[i])) buf.push(lines[i++].replace(/^>\s?/, ""));
+      out.push("<blockquote><p>" + mdInline(buf.join(" ")) + "</p></blockquote>"); continue;
+    }
+    if ((m = /^\s*[-*+]\s+(.*)$/.exec(ln))) {
+      flush();
+      if (list !== "ul") { closeList(); out.push("<ul>"); list = "ul"; }
+      out.push("<li>" + mdInline(m[1]) + "</li>"); i++; continue;
+    }
+    if ((m = /^\s*\d+\.\s+(.*)$/.exec(ln))) {
+      flush();
+      if (list !== "ol") { closeList(); out.push("<ol>"); list = "ol"; }
+      out.push("<li>" + mdInline(m[1]) + "</li>"); i++; continue;
+    }
+    para.push(ln.trim()); i++;
+  }
+  flush(); closeList();
+  return out.join("\n") || '<p style="color:#8b96a2">（空）</p>';
+}
+
+const DRAFT_KEY = "rc_draft_new";
+let draftTimer = null;
+
+function mdCount() {
+  const v = $("#np-body").value;
+  $("#np-count").textContent = v.length + " 字";
+  return v;
+}
+
+function mdSync() {
+  mdCount();
+  const pv = $("#np-preview");
+  if (!pv.hidden) pv.innerHTML = mdToHtml($("#np-body").value);
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(saveDraft, 600);
+}
+
+function saveDraft() {
+  const d = { title: $("#np-title").value, body: $("#np-body").value,
+              cat: $("#np-cat").value, ts: Date.now() };
+  if (!d.title.trim() && !d.body.trim()) {
+    localStorage.removeItem(DRAFT_KEY);
+    $("#np-draft").textContent = "";
+    return;
+  }
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    $("#np-draft").textContent = "草稿已保存 " +
+      new Date().toLocaleTimeString("zh-CN", { hour12: false }).slice(0, 5);
+  } catch (e) { /* 存不进去就算了 */ }
+}
+
+function loadDraft() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { d = null; }
+  if (!d) return false;
+  $("#np-title").value = d.title || "";
+  $("#np-body").value = d.body || "";
+  if (d.cat) $("#np-cat").value = d.cat;
+  $("#np-draft").textContent = "已恢复上次草稿";
+  return true;
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+  $("#np-draft").textContent = "";
+  $("#np-body").value = "";
+  $("#np-title").value = "";
+}
+
+function setMdMode(mode) {
+  const view = mode === "view";
+  $("#np-body").style.display = view ? "none" : "";
+  $("#np-preview").hidden = !view;
+  if (view) $("#np-preview").innerHTML = mdToHtml($("#np-body").value);
+  document.querySelectorAll("#np-mde .mde-tab")
+    .forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+}
+
+function mdWrap(pre, post, ph, ta) {
+  ta = ta || $("#np-body");
+  const s0 = ta.selectionStart, s1 = ta.selectionEnd, v = ta.value;
+  const text = v.slice(s0, s1) || ph || "";
+  ta.value = v.slice(0, s0) + pre + text + post + v.slice(s1);
+  ta.focus();
+  ta.setSelectionRange(s0 + pre.length, s0 + pre.length + text.length);
+}
+
+function mdPrefix(pre, ta) {
+  ta = ta || $("#np-body");
+  const v = ta.value, s0 = ta.selectionStart, s1 = ta.selectionEnd;
+  const start = v.lastIndexOf("\n", s0 - 1) + 1;
+  const nl = v.indexOf("\n", s1);
+  const end = nl === -1 ? v.length : nl;
+  const block = (v.slice(start, end) || "").split("\n").map(l => pre + l).join("\n");
+  ta.value = v.slice(0, start) + block + v.slice(end);
+  ta.focus();
+  ta.setSelectionRange(start, start + block.length);
+}
+
+function mdApply(kind, ta) {
+  ta = ta || $("#np-body");
+  switch (kind) {
+    case "b": mdWrap("**", "**", "粗体", ta); break;
+    case "i": mdWrap("*", "*", "斜体", ta); break;
+    case "s": mdWrap("~~", "~~", "删除线", ta); break;
+    case "code": mdWrap("`", "`", "代码", ta); break;
+    case "h": mdPrefix("## ", ta); break;
+    case "quote": mdPrefix("> ", ta); break;
+    case "ul": mdPrefix("- ", ta); break;
+    case "ol": mdPrefix("1. ", ta); break;
+    case "hr": mdWrap("\n---\n", "", "", ta); break;
+    case "pre": mdWrap("\n```\n", "\n```\n", "代码", ta); break;
+    case "link": mdWrap("[", "](https://)", "链接文字", ta); break;
+  }
+}
+
+document.querySelectorAll("#np-mde .mde-tb button[data-md]").forEach(b => {
+  b.onclick = () => { mdApply(b.dataset.md); mdSync(); };
+});
+document.querySelectorAll("#np-mde .mde-tab").forEach(b => {
+  b.onclick = () => setMdMode(b.dataset.mode);
+});
+$("#np-body").addEventListener("input", mdSync);
+$("#np-title").addEventListener("input", () => {
+  clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 600);
+});
+$("#np-body").addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (e.key === "Tab") {
+    e.preventDefault();
+    const ta = e.target, p = ta.selectionStart;
+    ta.value = ta.value.slice(0, p) + "  " + ta.value.slice(ta.selectionEnd);
+    ta.setSelectionRange(p + 2, p + 2);
+    mdSync();
+  } else if ((e.ctrlKey || e.metaKey) && (k === "b" || k === "i" || k === "k")) {
+    e.preventDefault();
+    mdApply(k === "b" ? "b" : k === "i" ? "i" : "link");
+  } else if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    $("#np-send").click();
+  }
+});
+
+function rankOptions() {
+  const urank = (S.user && S.user.rank) || 0;
+  const opts = [{ v: 0, t: "公开" }];
+  for (let i = 1; i <= urank; i++) opts.push({ v: i, t: "Lv" + i });
+  opts.push({ v: 255, t: "私有（仅自己）" });
+  return opts;
+}
+
+/* ── 新建单据 ─────────────────────────────────────── */
+$("#newpost").onclick = () => {
+  if (!needAuth()) return;
+  $("#np-cat").innerHTML = CATS.filter(c => c[0])
+    .map(c => '<option value="' + c[0] + '">' + c[1] + "</option>").join("");
+  $("#np-rank").innerHTML = rankOptions()
+    .map(o => '<option value="' + o.v + '">' + o.t + "</option>").join("");
+  $("#np-rank").value = "0";
+  $("#np-title").value = "";
+  $("#np-body").value = "";
+  $("#np-tip").textContent = "";
+  $("#np-draft").textContent = "";
+  setMdMode("edit");
+  mdCount();
+  loadDraft();
+  openMask("m-new");
+  setTimeout(() => $("#np-title").focus(), 60);
+};
+
+$("#np-send").onclick = async () => {
+  const title = $("#np-title").value.trim();
+  const body = $("#np-body").value.trim();
+  const cat = $("#np-cat").value;
+  if (!title || !body) { $("#np-tip").textContent = "摘要和说明都要填"; return; }
+  const b = $("#np-send");
+  b.disabled = true;
+  $("#np-tip").textContent = "提交中…";
+  try {
+    const d = await callApi("/api/newpost", {
+    title: title, content: body, category: cat, rank: parseInt($("#np-rank").value, 10) || 0
+  });
+    if (!d.ok) throw new Error(d.error || d.message || "提交失败");
+    $("#np-tip").textContent = "";
+    clearDraft();
+    closeMask("m-new");
+    toast("单据已提交，正在刷新列表");
+    load(1);
+  } catch (e) {
+    $("#np-tip").textContent = /rank/i.test(e.message)
+      ? "阅读限制不可用：当前账号等级不支持该选项" : e.message;
+  } finally {
+    b.disabled = false;
+  }
+};
+
+/* ── 回帖 ─────────────────────────────────────────── */
+async function sendReply(pid) {
+  const el = $("#rp-text");
+  if (!el) return;
+  const text = el.value.trim();
+  if (!text) { $("#rp-tip").textContent = "内容为空"; return; }
+  if (!needAuth()) return;
+  const b = $("#rp-send");
+  b.disabled = true;
+  $("#rp-tip").textContent = "提交中…";
+  try {
+    const d = await callApi("/api/reply", { postId: pid, content: text });
+    if (!d.ok) throw new Error(d.error || d.message || "提交失败");
+    toast("处理意见已提交");
+    await openPost(S.sel, 1);
+    if (S.postPages > 1) await openPost(S.sel, S.postPages);
+  } catch (e) {
+    $("#rp-tip").textContent = e.message;
+  } finally {
+    if ($("#rp-send")) $("#rp-send").disabled = false;
+  }
+}
+
+$("#rp-send").onclick = () => {
+  const row = S.rows[S.sel];
+  if (row) sendReply(row.id);
+};
+document.querySelectorAll(".rp-tb button[data-md2]").forEach(b => {
+  b.onclick = () => { mdApply(b.dataset.md2, $("#rp-text")); $("#rp-text").focus(); };
+});
+$("#rp-text").addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && (k === "b" || k === "i" || k === "k")) {
+    e.preventDefault();
+    mdApply(k === "b" ? "b" : k === "i" ? "i" : "link", $("#rp-text"));
+    return;
+  }
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    const row = S.rows[S.sel];
+    if (row) sendReply(row.id);
+  }
+});
+
+/* ── 待办 ─────────────────────────────────────────── */
+const NF = { tab: "at", page: 1, items: [], counts: { all: 0 } };
+
+function when(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const p = n => String(n).padStart(2, "0");
+  return p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+function pageForFloor(f) { return f <= 10 ? 1 : Math.floor(f / 10) + 1; }
+
+async function refreshUnread() {
+  try {
+    const r = await fetch(api("/api/notify/unread"), { cache: "no-store" });
+    const d = await r.json();
+    NF.counts = d.counts || { all: 0 };
+    const n = NF.counts.all || 0;
+    const b = $("#nf-badge");
+    b.textContent = n > 99 ? "99+" : String(n);
+    b.classList.toggle("on", n > 0);
+  } catch (e) { /* 静默 */ }
+}
+
+function renderNotify() {
+  const box = $("#nf-list");
+  if (!NF.items.length) {
+    box.innerHTML = '<div class="nf-empty">暂无待办</div>';
+    return;
+  }
+  box.innerHTML = NF.items.map((it, i) => {
+    const dot = it.viewed ? "" : '<span class="nf-dot"></span>';
+    const body = it.type === "sys"
+      ? '<div class="nf-l1">' + dot + '<span class="nf-t">' + esc(it.text) + "</span></div>" +
+        '<div class="nf-l2">' + esc(it.from) + " · " + esc(when(it.time)) + "</div>"
+      : '<div class="nf-l1">' + dot + '<span class="nf-id">NS-' + it.id + "</span>" +
+        '<span class="nf-t">' + esc(it.title) + "</span></div>" +
+        '<div class="nf-l2">' + esc(it.from) + " · 第 " + it.floor + " 楼 · " + esc(when(it.time)) + "</div>";
+    return '<div class="nf-item ' + (it.type === "sys" ? "sys " : "") +
+           (it.viewed ? "" : "unread") + '" data-i="' + i + '">' + body + "</div>";
+  }).join("");
+}
+
+async function loadNotify(tab, more) {
+  if (tab) { NF.tab = tab; NF.page = 1; NF.items = []; }
+  else if (more) NF.page += 1;
+  $("#nf-tip").textContent = "读取中…";
+  try {
+    const r = await fetch(api(`/api/notify?tab=${NF.tab}&page=${NF.page}`), { cache: "no-store" });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "E-5000");
+    NF.items = NF.items.concat(d.items);
+    renderNotify();
+    $("#nf-more").style.display = d.items.length ? "" : "none";
+    $("#nf-tip").textContent = NF.items.length ? `共 ${NF.items.length} 条` : "暂无待办";
+    document.querySelectorAll(".nf-tabs button")
+      .forEach(b => b.classList.toggle("on", b.dataset.tab === NF.tab));
+  } catch (e) {
+    $("#nf-list").innerHTML = '<div class="nf-empty">读取失败：' + esc(e.message) + "</div>";
+    $("#nf-tip").textContent = "";
+  }
+}
+
+async function markNotifyRead(tab) {
+  try {
+    await callApi("/api/notify/read", { tab: tab });
+    await refreshUnread();
+  } catch (e) { /* 静默 */ }
+}
+
+$("#notify").onclick = async () => {
+  if (!S.user) { needAuth(); return; }
+  openMask("m-notify");
+  await loadNotify("at");
+  markNotifyRead("at");
+};
+
+document.querySelectorAll(".nf-tabs button").forEach(b => {
+  b.onclick = () => { loadNotify(b.dataset.tab); markNotifyRead(b.dataset.tab); };
+});
+
+$("#nf-list").addEventListener("click", e => {
+  const el = e.target.closest(".nf-item");
+  if (!el) return;
+  const it = NF.items[+el.dataset.i];
+  if (!it || it.type === "sys") return;
+  closeMask("m-notify");
+  openPostById(it.id, it.title, pageForFloor(it.floor), it.floor);
+});
+
+$("#nf-more").onclick = () => loadNotify(null, true);
+
+/* ── 附件展开 ─────────────────────────────────────── */
+function expandImg(ph) {
+  if (ph.__fig) return;
+  const fig = document.createElement("figure");
+  fig.className = "att";
+  const img = document.createElement("img");
+  img.loading = "lazy";
+  img.alt = ph.dataset.alt || "";
+  img.src = ph.dataset.src;
+  img.onerror = () => {
+    img.remove();
+    const err = document.createElement("div");
+    err.className = "att-err";
+    err.textContent = "附件加载失败（可能已失效）";
+    fig.appendChild(err);
+  };
+  const cap = document.createElement("figcaption");
+  cap.textContent = ph.textContent + " · 点击收起";
+  fig.append(img, cap);
+  fig.__ph = ph;
+  ph.__fig = fig;
+  ph.replaceWith(fig);
+}
+
+function collapseImg(fig) {
+  const ph = fig.__ph;
+  if (!ph) return;
+  ph.__fig = null;
+  fig.replaceWith(ph);
+}
+
+$("#d-body").addEventListener("click", e => {
+  const ph = e.target.closest(".imgph");
+  if (ph) { expandImg(ph); return; }
+  const fig = e.target.closest("figure.att");
+  if (fig) { collapseImg(fig); return; }
+  // 帖内链接：指向别的帖子就在本页打开，外链照常新标签
+  const a = e.target.closest("a.inpost");
+  if (a && e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+    e.preventDefault();
+    const pid = +a.dataset.post, page = +a.dataset.page || 1, floor = +a.dataset.floor || 0;
+    const cur = S.rows[S.sel];
+    if (cur && cur.id === pid) loadPost(cur, page, floor);
+    else openPostById(pid, a.textContent, page, floor);
+  }
+});
+
+$("#imgs").onchange = e => {
+  S.imgs = e.target.checked;
+  localStorage.setItem("rc_imgs", S.imgs ? "1" : "0");
+  const box = $("#d-body");
+  if (S.imgs) box.querySelectorAll(".imgph").forEach(expandImg);
+  else box.querySelectorAll("figure.att").forEach(collapseImg);
+};
+
+/* ── 启动 ─────────────────────────────────────────── */
+S.imgs = localStorage.getItem("rc_imgs") === "1";
+$("#imgs").checked = S.imgs;
+renderCats();
+renderPager();
+load(1);
+refreshMe().then(() => refreshUnread());
+setInterval(() => { if (S.user) refreshUnread(); }, 60000);
+</script>
+</body>
+</html>
