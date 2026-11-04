@@ -38,7 +38,7 @@ CATEGORIES = [
     ("daily", "日常"), ("tech", "技术"), ("info", "情报"), ("review", "测评"),
     ("trade", "交易"), ("carpool", "拼车"), ("promotion", "推广"), ("life", "生活"),
     ("dev", "Dev"), ("photo-share", "贴图"), ("expose", "曝光"),
-    ("sandbox", "沙盒"), ("meaningless", "无意义"),
+    ("inside", "内版"), ("sandbox", "沙盒"), ("meaningless", "无意义"),
 ]
 CAT_NAME = dict(CATEGORIES)
 
