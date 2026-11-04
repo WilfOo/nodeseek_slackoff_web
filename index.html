@@ -648,8 +648,8 @@ const api = p => p + (K ? (p.includes("?") ? "&" : "?") + "k=" + encodeURICompon
 
 const S = {
   page: 1, pages: 1, cat: "", sort: "replyTime", kw: "",
-  rows: [], sel: -1, post: null, postPage: 1, postPages: 1, busy: false, veil: false,
-  user: null, imgs: false
+  rows: [], sel: -1, row: null, post: null, postId: 0, postPage: 1, postPages: 1,
+  busy: false, veil: false, user: null, imgs: false
 };
 
 const CATS = [
@@ -789,6 +789,7 @@ async function openPost(i, page) {
   const row = S.rows[i];
   if (!row) return;
   S.sel = i;
+  S.row = row;
   [...document.querySelectorAll("#rows tr")].forEach(tr => {
     const on = +tr.dataset.i === i;
     tr.classList.toggle("sel", on);
@@ -801,19 +802,30 @@ async function openPost(i, page) {
 async function openPostById(pid, title, page, floor) {
   S.sel = -1;
   document.querySelectorAll("#rows tr.sel").forEach(tr => tr.classList.remove("sel"));
-  await loadPost({ id: pid, title: title || "", author: "", views: 0, comments: 0,
-                   cat: "", time: "", pinned: false, need_level: null, stub: true },
-                 page || 1, floor || 0);
+  S.row = { id: pid, title: title || "", author: "", views: 0, comments: 0,
+            cat: "", time: "", pinned: false, need_level: null, stub: true };
+  await loadPost(S.row, page || 1, floor || 0);
 }
 
-async function loadPost(row, page, floor) {
+// 明细翻页：待办打开的占位单据没有列表行号，用当前行的 id 重新加载
+function openPage(page) {
+  const row = S.row || S.rows[S.sel];
+  return row ? loadPost(row, page, 0) : null;
+}
+
+async function loadPost(row, page, floor, opts) {
+  const quiet = !!(opts && opts.quiet);       // 静默刷新：保留当前内容，避免闪一下「正在读取」
+  const metaOnly = !!(opts && opts.metaOnly);  // 只取页数，不渲染（回帖后先探一下有没有多出一页）
   S.postPage = page || 1;
+  S.postId = row.id;
   $("#drawer").classList.add("on");
   $("#d-no").textContent = "NS-" + row.id;
-  $("#d-body").innerHTML = "<div class='empty'>正在读取明细…</div>";
-  $("#d-foot").innerHTML = "";
-  $("#rp-text").value = "";
-  $("#rp-tip").textContent = "";
+  if (!quiet && !metaOnly) {
+    $("#d-body").innerHTML = "<div class='empty'>正在读取明细…</div>";
+    $("#d-foot").innerHTML = "";
+    $("#rp-text").value = "";
+    $("#rp-tip").textContent = "";
+  }
   try {
     const r = await fetch(api(`/api/post?id=${row.id}&page=${S.postPage}`), { cache: "no-store" });
     const d = await r.json();
@@ -821,6 +833,7 @@ async function loadPost(row, page, floor) {
     if (d.locked) return renderLocked(row, d.lock);
     S.post = d;
     S.postPages = d.pages || 1;
+    if (metaOnly) return;
     renderPost(row, d);
     if (floor) {
       const tr = document.querySelector('#d-body tr[data-floor="' + floor + '"]');
@@ -834,6 +847,7 @@ async function loadPost(row, page, floor) {
     }
   } catch (e) {
     console.error(e);
+    if (quiet || metaOnly) throw e;   // 静默刷新失败时保留原内容，交给调用方提示
     $("#d-body").innerHTML = `<div class="empty"><b>读取失败</b>${esc(e.message)}</div>`;
   }
 }
@@ -925,14 +939,57 @@ function renderPost(row, d) {
       <button class="btn" id="dp-prev" ${S.postPage <= 1 ? "disabled" : ""}>上一页</button>
       <button class="btn" id="dp-next" ${S.postPage >= S.postPages ? "disabled" : ""}>下一页</button>
     </div>`;
-  $("#dp-prev") && ($("#dp-prev").onclick = () => openPost(S.sel, S.postPage - 1));
-  $("#dp-next") && ($("#dp-next").onclick = () => openPost(S.sel, S.postPage + 1));
+  $("#dp-prev") && ($("#dp-prev").onclick = () => openPage(S.postPage - 1));
+  $("#dp-next") && ($("#dp-next").onclick = () => openPage(S.postPage + 1));
+}
+
+// 回帖后重新读取：先探一下最新页数（可能多出一页），再落到最后一页渲染
+async function refreshDetail(pid) {
+  if (!S.row) return true;   // 提交期间明细被关掉了，不强行再打开
+  const row = S.row;
+  try {
+    await loadPost(row, 1, 0, { metaOnly: true });
+    await loadPost(row, Math.max(1, S.postPages), 0, { quiet: true });
+    return true;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+}
+
+// 高亮自己刚回的那一楼（从末尾往前找自己的名字），找不到就落到最后一楼
+function floorRows() {
+  return [...document.querySelectorAll("#d-body tr[data-floor]")]
+    .map(tr => ({ tr: tr, floor: parseInt(tr.dataset.floor, 10) }))
+    .filter(x => !isNaN(x.floor));
+}
+function maxFloor() {
+  const f = floorRows().map(x => x.floor);
+  return f.length ? Math.max.apply(null, f) : 0;
+}
+function highlightNewFloor() {
+  const rows = floorRows();
+  if (!rows.length) return false;
+  let pick = null;
+  if (S.user) {
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const who = rows[i].tr.querySelector(".lg-head b");
+      if (who && who.textContent.trim() === S.user.name) { pick = rows[i]; break; }
+    }
+  }
+  pick = pick || rows[rows.length - 1];
+  pick.tr.scrollIntoView({ block: "center" });
+  pick.tr.classList.add("hit");
+  setTimeout(() => { if (pick.tr) pick.tr.classList.remove("hit"); }, 2600);
+  return true;
 }
 
 function closePost() {
   document.querySelector(".dreply").style.display = "";
   $("#drawer").classList.remove("on");
   S.sel = -1;
+  S.row = null;
+  S.postId = 0;
   [...document.querySelectorAll("#rows tr.sel")].forEach(tr => tr.classList.remove("sel"));
 }
 
@@ -1387,6 +1444,10 @@ $("#np-send").onclick = async () => {
 };
 
 /* ── 回帖 ─────────────────────────────────────────── */
+function currentPid() {
+  return S.postId || (S.rows[S.sel] && S.rows[S.sel].id) || 0;
+}
+
 async function sendReply(pid) {
   const el = $("#rp-text");
   if (!el) return;
@@ -1397,11 +1458,32 @@ async function sendReply(pid) {
   b.disabled = true;
   $("#rp-tip").textContent = "提交中…";
   try {
+    const before = maxFloor();
     const d = await callApi("/api/reply", { postId: pid, content: text });
     if (!d.ok) throw new Error(d.error || d.message || "提交失败");
-    toast("处理意见已提交");
-    await openPost(S.sel, 1);
-    if (S.postPages > 1) await openPost(S.sel, S.postPages);
+    el.value = "";
+    $("#rp-tip").textContent = "已提交，正在刷新明细…";
+    // 列表行的记录数与最后更新时间跟着动，关掉明细就能看到
+    const row = S.rows.find(r => String(r.id) === String(pid));
+    if (row) {
+      row.comments = (row.comments || 0) + 1;
+      row.time = new Date().toISOString().slice(0, 19).replace("T", " ");
+      renderRows();
+    }
+    // 服务端已清掉该帖的页面缓存，这里重新取最新一页并定位到新楼层
+    const keepOpen = !!S.row;
+    const refreshed = await refreshDetail(pid);
+    $("#rp-tip").textContent = "";
+    if (!refreshed) {
+      toast("处理意见已提交，但明细读取失败，请稍后重新打开");
+    } else if (!keepOpen) {
+      toast("处理意见已提交");
+    } else {
+      highlightNewFloor();
+      const after = maxFloor();
+      toast(after > before ? `处理意见已提交，明细已刷新到第 ${after} 楼`
+                           : "处理意见已提交，明细里暂未出现新楼层，请稍后重开");
+    }
   } catch (e) {
     $("#rp-tip").textContent = e.message;
   } finally {
@@ -1410,8 +1492,8 @@ async function sendReply(pid) {
 }
 
 $("#rp-send").onclick = () => {
-  const row = S.rows[S.sel];
-  if (row) sendReply(row.id);
+  const pid = currentPid();
+  if (pid) sendReply(pid);
 };
 document.querySelectorAll(".rp-tb button[data-md2]").forEach(b => {
   b.onclick = () => { mdApply(b.dataset.md2, $("#rp-text")); $("#rp-text").focus(); };
@@ -1425,8 +1507,8 @@ $("#rp-text").addEventListener("keydown", e => {
   }
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
-    const row = S.rows[S.sel];
-    if (row) sendReply(row.id);
+    const pid = currentPid();
+    if (pid) sendReply(pid);
   }
 });
 
@@ -1563,7 +1645,7 @@ $("#d-body").addEventListener("click", e => {
     e.preventDefault();
     const pid = +a.dataset.post, page = +a.dataset.page || 1, floor = +a.dataset.floor || 0;
     const cur = S.rows[S.sel];
-    if (cur && cur.id === pid) loadPost(cur, page, floor);
+    if (cur && cur.id === pid) { S.row = cur; loadPost(cur, page, floor); }
     else openPostById(pid, a.textContent, page, floor);
   }
 });

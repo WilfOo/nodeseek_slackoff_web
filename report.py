@@ -552,6 +552,28 @@ def fetch(path, ttl=90, auth=False):
     return body
 
 
+_LIST_RE = re.compile(r"^/(page-\d+|categories/[^/?]+(/page-\d+)?)$")
+
+
+def purge_cache(post_id=None):
+    """写入成功后清掉受影响的上游页面缓存。
+
+    帖子页缓存 180 秒、列表页 90 秒；回帖/发帖后不清缓存，
+    重新读取会拿到写入之前的旧页面，表现为「明细里看不到自己刚回的内容」。
+    传 post_id 时连带该帖各页一起清，列表页总是清（记录数与最后更新时间会变）。
+    """
+    hit = 0
+    with _cache_lock:
+        for k in list(_cache):
+            path = k[2:] if k.startswith("u|") else k
+            base = path.split("?", 1)[0]
+            if base == "/" or _LIST_RE.match(base) or (
+                    post_id and base.startswith(f"/post-{post_id}-")):
+                _cache.pop(k, None)
+                hit += 1
+    return hit
+
+
 # --------------------------------------------------------------------------
 # 解析
 # --------------------------------------------------------------------------
@@ -865,8 +887,10 @@ class Handler(BaseHTTPRequestHandler):
         data = api_post("/api/content/new-comment",
                         {"content": content, "mode": "new-comment", "postId": pid},
                         referer=f"{BASE}/post-{pid}-1")
-        return self._json({"ok": bool(data.get("success")),
-                           "message": data.get("message") or ""})
+        ok = bool(data.get("success"))
+        if ok:
+            purge_cache(pid)
+        return self._json({"ok": ok, "message": data.get("message") or ""})
 
     def _newpost(self):
         d = self._body()
@@ -892,7 +916,10 @@ class Handler(BaseHTTPRequestHandler):
                         {"content": content, "mode": "new-discussion",
                          "title": title, "category": cat, "rank": rank},
                         referer=f"{BASE}/new-discussion")
-        return self._json({"ok": bool(data.get("success")),
+        ok = bool(data.get("success"))
+        if ok:
+            purge_cache()   # 新单据要出现在列表里，别被 90 秒列表缓存挡住
+        return self._json({"ok": ok,
                            "message": data.get("message") or "",
                            "id": data.get("data") or data.get("postId") or ""})
 
@@ -992,6 +1019,8 @@ class Handler(BaseHTTPRequestHandler):
         data = parse_post(body, pid)
         data["ok"] = True
         data["page"] = page
+        # 最后一页的当前页码不是链接，靠分页链接算出来会少 1 页（322 页报成 321）
+        data["pages"] = max(int(data.get("pages") or 1), page)
         self._json(data)
 
 
