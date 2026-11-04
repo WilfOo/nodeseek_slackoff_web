@@ -508,14 +508,17 @@ def session(imp=None):
     return s
 
 
-def fetch(path, ttl=90, auth=False):
-    """取页面文本；有会话时优先用会话取（能看到登录可见的帖子）"""
+def fetch(path, ttl=90, auth=False, fresh=False):
+    """取页面文本；有会话时优先用会话取（能看到登录可见的帖子）
+
+    fresh=True 时跳过缓存读取，直接回源，取回后照常写回缓存。
+    """
     use_auth = bool(auth and STORE.active)
     key = ("u|" if use_auth else "") + path
     now = time.time()
     with _cache_lock:
         hit = _cache.get(key)
-        if hit and now - hit[0] < ttl:
+        if hit and not fresh and now - hit[0] < ttl:
             return hit[1]
 
     body, errs, missing_body = None, [], None
@@ -1006,10 +1009,11 @@ class Handler(BaseHTTPRequestHandler):
     def _post(self, q):
         pid = int(q.get("id") or 0)
         page = max(1, int(q.get("page") or 1))
+        fresh = (q.get("fresh") or "") in ("1", "true", "yes")
         if not pid:
             return self._json({"ok": False, "error": "E-4001 缺少单据号"}, 400)
         try:
-            body = fetch(f"/post-{pid}-{page}", ttl=180, auth=True)
+            body = fetch(f"/post-{pid}-{page}", ttl=180, auth=True, fresh=fresh)
         except RestrictedPost as e:
             info = parse_locked(e.body)
             if info["type"] == "missing":

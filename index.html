@@ -206,8 +206,15 @@ table.grid tbody tr{cursor:default}
   font-weight:600;color:#22384f;user-select:none
 }
 .drawer .dhead .tag{font-weight:400;color:var(--ink3);font-family:Consolas,monospace}
+.drawer .dhead .rf{
+  margin-left:auto;height:18px;padding:0 7px;border:1px solid #c3d2e0;border-radius:2px;
+  background:linear-gradient(#fbfdff,#eef4fa);color:#2a5d8c;font-size:11.5px;font-family:inherit;
+  line-height:1;cursor:pointer
+}
+.drawer .dhead .rf:hover{border-color:#8fb0cd;background:#e3eefa}
+.drawer .dhead .rf[disabled]{color:#9aa4ae;border-color:#d7dee6;background:#f4f7fa;cursor:default}
 .drawer .dhead .x{
-  margin-left:auto;width:18px;height:18px;border:1px solid transparent;background:none;
+  margin-left:0;width:18px;height:18px;border:1px solid transparent;background:none;
   color:#5b6773;cursor:pointer;font-size:13px;line-height:1;border-radius:2px
 }
 .drawer .dhead .x:hover{background:#dbe7f2;border-color:#b9cfe4;color:#1b3a55}
@@ -490,7 +497,8 @@ textarea:focus{border-color:#7fa8cc;box-shadow:0 0 0 1px #cfe0ee}
 
     <div class="drawer" id="drawer">
       <div class="dhead">
-        <span>单据明细</span><span class="tag" id="d-no"></span>
+        <span>单据明细</span><span class="tag" id="d-no"></span><span class="tag" id="d-at"></span>
+        <button class="rf" id="d-refresh" title="按当前页重新读取明细">刷新</button>
         <button class="x" id="d-close" title="关闭 (Esc)">✕</button>
       </div>
       <div class="dbody" id="d-body"></div>
@@ -795,7 +803,7 @@ async function openPost(i, page) {
     tr.classList.toggle("sel", on);
     if (on) tr.scrollIntoView({ block: "nearest" });
   });
-  await loadPost(row, page || 1, 0);
+  await loadPost(row, page || 1, 0, { fresh: true });   // 每次点开都取最新，不吃 180 秒页面缓存
 }
 
 // 从待办直接打开：列表里未必有这条单据，用概要占位
@@ -804,7 +812,7 @@ async function openPostById(pid, title, page, floor) {
   document.querySelectorAll("#rows tr.sel").forEach(tr => tr.classList.remove("sel"));
   S.row = { id: pid, title: title || "", author: "", views: 0, comments: 0,
             cat: "", time: "", pinned: false, need_level: null, stub: true };
-  await loadPost(S.row, page || 1, floor || 0);
+  await loadPost(S.row, page || 1, floor || 0, { fresh: true });
 }
 
 // 明细翻页：待办打开的占位单据没有列表行号，用当前行的 id 重新加载
@@ -816,6 +824,7 @@ function openPage(page) {
 async function loadPost(row, page, floor, opts) {
   const quiet = !!(opts && opts.quiet);       // 静默刷新：保留当前内容，避免闪一下「正在读取」
   const metaOnly = !!(opts && opts.metaOnly);  // 只取页数，不渲染（回帖后先探一下有没有多出一页）
+  const fresh = !!(opts && opts.fresh);        // 跳过服务端页面缓存，直接回源
   S.postPage = page || 1;
   S.postId = row.id;
   $("#drawer").classList.add("on");
@@ -823,18 +832,25 @@ async function loadPost(row, page, floor, opts) {
   if (!quiet && !metaOnly) {
     $("#d-body").innerHTML = "<div class='empty'>正在读取明细…</div>";
     $("#d-foot").innerHTML = "";
+    $("#d-at").textContent = "";
     $("#rp-text").value = "";
     $("#rp-tip").textContent = "";
   }
   try {
-    const r = await fetch(api(`/api/post?id=${row.id}&page=${S.postPage}`), { cache: "no-store" });
+    const r = await fetch(api(`/api/post?id=${row.id}&page=${S.postPage}${fresh ? "&fresh=1" : ""}`),
+                          { cache: "no-store" });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || "E-5000");
-    if (d.locked) return renderLocked(row, d.lock);
     S.post = d;
     S.postPages = d.pages || 1;
     if (metaOnly) return;
+    if (d.locked) {
+      renderLocked(row, d.lock);
+      noteRead();
+      return;
+    }
     renderPost(row, d);
+    noteRead();
     if (floor) {
       const tr = document.querySelector('#d-body tr[data-floor="' + floor + '"]');
       if (tr) {
@@ -941,6 +957,36 @@ function renderPost(row, d) {
     </div>`;
   $("#dp-prev") && ($("#dp-prev").onclick = () => openPage(S.postPage - 1));
   $("#dp-next") && ($("#dp-next").onclick = () => openPage(S.postPage + 1));
+}
+
+// 明细头部的读取时间
+function noteRead() {
+  const el = $("#d-at");
+  if (el) el.textContent = "更新 " + new Date().toLocaleTimeString("zh-CN", { hour12: false });
+}
+
+// 手动刷新：按当前页回源重读，保留滚动位置；页数变少时退到最后一页
+async function reloadDetail() {
+  const row = S.row;
+  if (!row) return;
+  const btn = $("#d-refresh");
+  const body = $("#d-body");
+  const top = body.scrollTop;
+  const page = S.postPage;
+  if (btn) { btn.disabled = true; btn.textContent = "读取…"; }
+  try {
+    await loadPost(row, page, 0, { quiet: true, fresh: true });
+    if (!(S.post && S.post.locked) && S.postPages < page) {
+      await loadPost(row, S.postPages, 0, { quiet: true, fresh: true });
+    }
+    body.scrollTop = top;
+    if (S.row) toast("明细已刷新");
+  } catch (e) {
+    console.error(e);
+    if (S.row) toast("刷新失败：" + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "刷新"; }
+  }
 }
 
 // 回帖后重新读取：先探一下最新页数（可能多出一页），再落到最后一页渲染
@@ -1056,6 +1102,7 @@ $("#kw").addEventListener("keydown", e => { if (e.key === "Enter") load(1); });
 $("#exp").onclick = () => toast("已导出 D:\\财务\\报表\\收入对账明细_202610.xlsx");
 $("#prt").onclick = () => toast("打印任务已提交：HP LaserJet M404（prn-fin-01）");
 $("#d-close").onclick = closePost;
+$("#d-refresh").onclick = reloadDetail;
 $("#vclose").onclick = () => setVeil(false);
 
 document.addEventListener("keydown", e => {
