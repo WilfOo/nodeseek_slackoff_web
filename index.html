@@ -582,6 +582,7 @@ textarea:focus{border-color:#7fa8cc;box-shadow:0 0 0 1px #cfe0ee}
     </div>
     <div class="dlg-f">
       <span class="tip" id="nf-tip"></span>
+      <button class="btn" id="nf-all">全部已读</button>
       <button class="btn" id="nf-more">加载更多</button>
     </div>
   </div>
@@ -1621,32 +1622,59 @@ async function loadNotify(tab, more) {
   }
 }
 
-async function markNotifyRead(tab) {
+async function markNotifyRead(tab, ids, all) {
   try {
-    await callApi("/api/notify/read", { tab: tab });
+    const d = await callApi("/api/notify/read", { tab: tab, ids: ids || [], all: !!all });
+    if (d && d.ok === false) {
+      toast(d.message || d.error || "标记失败");
+      return false;
+    }
     await refreshUnread();
-  } catch (e) { /* 静默 */ }
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 $("#notify").onclick = async () => {
   if (!S.user) { needAuth(); return; }
   openMask("m-notify");
   await loadNotify("at");
-  markNotifyRead("at");
 };
 
 document.querySelectorAll(".nf-tabs button").forEach(b => {
-  b.onclick = () => { loadNotify(b.dataset.tab); markNotifyRead(b.dataset.tab); };
+  b.onclick = () => loadNotify(b.dataset.tab);
 });
 
-$("#nf-list").addEventListener("click", e => {
+// 点哪条清哪条：先标记这一条，红点与角标立即变，再打开明细
+$("#nf-list").addEventListener("click", async e => {
   const el = e.target.closest(".nf-item");
   if (!el) return;
   const it = NF.items[+el.dataset.i];
-  if (!it || it.type === "sys") return;
+  if (!it) return;
+  if (!it.viewed && it.nid) {
+    it.viewed = 1;
+    renderNotify();
+    markNotifyRead(NF.tab, [it.nid]);   // 不 await，明细打开优先
+  }
+  if (it.type === "sys") return;
   closeMask("m-notify");
   openPostById(it.id, it.title, pageForFloor(it.floor), it.floor);
 });
+
+$("#nf-all").onclick = async () => {
+  const btn = $("#nf-all");
+  btn.disabled = true;
+  try {
+    if (await markNotifyRead(NF.tab, [], true)) {
+      NF.items.forEach(it => { it.viewed = 1; });
+      renderNotify();
+      toast("本栏已全部标记已读");
+    }
+  } finally {
+    btn.disabled = false;
+  }
+};
 
 $("#nf-more").onclick = () => loadNotify(null, true);
 

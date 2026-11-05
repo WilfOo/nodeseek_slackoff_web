@@ -381,6 +381,7 @@ def notify_items(tab, page=1):
         out = [{
             "type": "sys",
             "id": r.get("max_id"),
+            "nid": r.get("max_id"),
             "from": r.get("sender_name") or "",
             "time": r.get("created_at") or "",
             "text": _md_plain(r.get("content")),
@@ -393,6 +394,7 @@ def notify_items(tab, page=1):
     out = [{
         "type": "post",
         "id": r.get("post_id"),
+        "nid": r.get("id"),
         "title": r.get("title") or "",
         "from": r.get("commenter_name") or "",
         "floor": r.get("floor_id") or 0,
@@ -409,6 +411,7 @@ def api_post(path, payload, referer=None):
         "x-csrf-challenge": "simple-token",
         "Csrf-Token": "".join(random.choices(
             "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=16)),
+        "Origin": BASE,           # 标记已读等接口缺这个会被判 high risk action
         "Referer": referer or (BASE + "/"),
         "Content-Type": "application/json",
     })
@@ -952,21 +955,38 @@ class Handler(BaseHTTPRequestHandler):
             "message": c.get("message", 0), "all": c.get("all", 0)}})
 
     def _notify_read(self):
-        _unread_cache["v"] = None
         d = self._body()
         tab = d.get("tab") or ""
-        paths = {"at": "/api/notification/at-me/markViewedComments",
-                 "reply": "/api/notification/reply-to-me/markViewedComments",
-                 "msg": "/api/notification/message/markViewed"}
+        ids = d.get("ids") or []
+        all_read = bool(d.get("all"))
+        paths = {"at": ("/api/notification/at-me/markViewed", "atMe"),
+                 "reply": ("/api/notification/reply-to-me/markViewed", "replys"),
+                 "msg": ("/api/notification/message/markViewed", "messages")}
         if tab not in paths:
             return self._json({"ok": False, "error": "E-4009 参数不对"}, 400)
         if not STORE.active:
             raise AuthError()
+        path, key = paths[tab]
         try:
-            api_post(paths[tab], {}, referer=BASE + "/notification")
-        except RuntimeError:
-            pass
-        return self._json({"ok": True})
+            if all_read:
+                # 站点前端的「全部标记已读」：?all=true，不带 body
+                data = api_post(path + "?all=true", None, referer=BASE + "/notification")
+            else:
+                nums = []
+                for x in ids:
+                    try:
+                        nums.append(int(x))
+                    except (TypeError, ValueError):
+                        continue
+                if not nums:
+                    return self._json({"ok": False, "error": "E-4009 缺少待办编号"}, 400)
+                data = api_post(path, {key: nums}, referer=BASE + "/notification")
+        except RuntimeError as e:  # noqa: BLE001
+            _unread_cache["v"] = None
+            return self._json({"ok": False, "error": f"E-4010 标记失败：{e}"}, 502)
+        _unread_cache["v"] = None
+        ok = bool(data.get("success"))
+        return self._json({"ok": ok, "message": data.get("message") or ""})
 
     def _img(self, q):
         u = unquote(q.get("u") or "")
